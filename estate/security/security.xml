@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!-- Agent group -->
+    <record id="estate_group_user" model="res.groups">
+        <field name="name">Agent</field>
+        <field name="category_id" ref="base.module_category_real_estate_brokerage"/>
+    </record>
+
+    <!-- Manager group (inherits Agent group) -->
+    <record id="estate_group_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="category_id" ref="base.module_category_real_estate_brokerage"/>
+        <!-- The implied_ids field means: Manager group includes all rights of Agent group -->
+        <field name="implied_ids" eval="[(4, ref('module_name.estate_group_user'))]"/>
+    </record>
+</odoo>
