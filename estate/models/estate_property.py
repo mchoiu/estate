@@ -47,7 +47,7 @@ class EstateProperty(models.Model):
         required=True,
         copy=False,
         readonly=True,
-        store=True
+        store=True,
     )
     active = fields.Boolean(string="Active", default=True)
 
@@ -75,10 +75,6 @@ class EstateProperty(models.Model):
             accepted_offer = record.offer_ids.filtered(lambda o: o.status == 'accepted')
             if accepted_offer:
                 record.state = 'offer_accepted'
-            elif record.offer_ids:
-                record.state = 'offer_received'
-            else:
-                record.state = 'new'
 
     total_area = fields.Float(string="Total Area", compute="_compute_total_area")
 
@@ -93,7 +89,7 @@ class EstateProperty(models.Model):
         for record in self:
             record.total_area = record.living_area + record.garden_area
 
-    best_price = fields.Float(string="Best Price", compute='_compute_best_price')
+    best_price = fields.Float(string="Best Price", compute='_compute_best_price', store = True)
 
     @api.depends("offer_ids.price")
     def _compute_best_price(self):
@@ -120,6 +116,10 @@ class EstateProperty(models.Model):
         # sold property cannot be canceled
         if self.state == 'sold':
             raise UserError("Sold property cannot be canceled.")
-
         else:
             self.state = 'canceled'
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_new_or_canceled(self):
+        if self.state != 'canceled' and self.state != 'new':
+            raise UserError("Only new and canceled property can be deleted!")

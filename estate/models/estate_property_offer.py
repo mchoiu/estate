@@ -23,6 +23,13 @@ class EstatePropertyOffer(models.Model):
     date_deadline = fields.Date(string='Deadline', compute='_compute_date_deadline',
                                 inverse='_inverse_date_deadline', store=True)
     validity = fields.Integer(string='Validity (Days)', default=7)
+    # TODO
+    property_type_id = fields.Many2one(
+        comodel_name='estate.property.type',
+        string='Property Type',
+        related='property_id.property_type',
+        store=True,
+    )
 
     @api.constrains('date_deadline')
     def _date_deadline(self):
@@ -46,7 +53,6 @@ class EstatePropertyOffer(models.Model):
 
     def action_accept_offer(self):
         for record in self:
-            # Check if there is already an accepted offer for this property
             existing_accepted = self.env['estate.property.offer'].search([
                 ('property_id', '=', record.property_id.id),
                 ('status', '=', 'accepted')
@@ -64,6 +70,22 @@ class EstatePropertyOffer(models.Model):
     def action_refuse_offer(self):
         for record in self:
             if record.status != 'refused':
-                # TODO set selling price to 0
-                # record.property_id.selling_price = 0
                 record.status = 'refused'
+
+    @api.model
+    def create(self, vals_list):
+        for vals in vals_list:
+            property_id = vals.get('property_id')
+            price = vals.get('price')
+            property = self.env['estate.property'].browse(property_id)
+
+            # Check against existing offers
+            if property.offer_ids:
+                max_offer = max(property.offer_ids.mapped('price'))
+                if price < max_offer:
+                    raise UserError(
+                        f"Cannot make an offer (${price}) lower than "
+                        f"existing highest offer (${max_offer})"
+                    )
+            property.state = "offer_received"
+        return super().create(vals_list)
